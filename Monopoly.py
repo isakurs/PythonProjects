@@ -131,6 +131,7 @@ def endturn():
         current_turn = (current_turn + 0) % len(player_list)
     else:
         current_turn = (current_turn + 1) % len(player_list)
+globalmove = 0
 ChanceMovement = False
 owned_prop = []
 current = 0
@@ -278,19 +279,19 @@ def Jail():
     print("Do NOT pass GO, do NOT collect $200.")
     Jail()
 def Repairs():
+    print("Chance Card: Make general repairs on all your properties.")
+    print("Pay $25 per house and $100 per hotel.")
     global current_player, player_cash, prop_list, player_prop, prop_house
     propcheck = -1
     for i in range(40):
         propcheck += 1
-        if prop_list[propcheck] in player_prop:
-            housecount = prop_house[propcheck]
-            if housecount == 5:
+        if prop_owner[propcheck] == current_player:
+            if prop_house[propcheck] == 5:
                 player_cash[current_player] -= 100
             else:
-                player_cash[current_player] -= 25 * housecount
-    print("Chance Card: Make general repairs on all your properties.")
-    print("Pay $25 per house and $100 per hotel.")
-    print(f"{current_player} now has ${player_cash[current_player]}.")
+                player_cash[current_player] -= 25 * prop_house[propcheck]
+    print(f"You now have ${player_cash[current_player]}.")
+    BankruptCheck()
 def Poor15():
     global current_player, player_cash
     player_cash[current_player] -= 15
@@ -411,17 +412,18 @@ def CCGet25():
     print(f"{current_player} now has ${player_cash[current_player]}.")
 def CCRepairs():
     global current_player, player_cash, prop_list, player_prop, prop_house
+    print("Community Chest: You are assessed for street repairs.")
+    print("Pay $40 per house and $115 per hotel.")
     propcheck = -1
     for i in range(40):
         propcheck += 1
-        if prop_list[propcheck] in player_prop:
-            housecount = prop_house[propcheck]
-            if housecount == 5:
+        if prop_owner[propcheck] == current_player:
+            if prop_house[propcheck] == 5:
                 player_cash[current_player] -= 115
             else:
-                player_cash[current_player] -= 40 * housecount
-    print("Community Chest: You are assessed for street repairs.")
-    print("Pay $40 per house and $115 per hotel.")
+                player_cash[current_player] -= 40 * prop_house[propcheck]
+    print(f"You now have ${player_cash[current_player]}.")
+    BankruptCheck()
 def CCGet10Pretty():
     global current_player, player_cash
     player_cash[current_player] += 10
@@ -448,6 +450,7 @@ def CheckNetWorth():
         if prop_list[check] in player_prop[current_player]:
             networth[current_player] += int(prop_prices[check])
             networth[current_player] += int(prop_house[check]) * int(house_prices[check])
+            networth[current_player] = round(networth[current_player])
     networth[current_player] += int(player_cash[current_player])            
 def DetermineOwner():
     global player, player_list, owned_prop, player_prop, current_prop, paid_player
@@ -456,21 +459,21 @@ def DetermineOwner():
             paid_player = player
             print(f"{current_prop} is owned by {paid_player}.")
 def CheckOwned():
-    global ownedU, ownedRR, player_list, current_player, player_prop, prop_list
-    ownedU[current_player] = 0
-    ownedRR[current_player] = 0
-    if prop_list[12] in player_prop[current_player]:
-        ownedU[current_player] += 1
-    if prop_list[28] in player_prop[current_player]:
-        ownedU[current_player] += 1
-    if prop_list[5] in player_prop[current_player]:
-        ownedRR[current_player] += 1
-    if prop_list[15] in player_prop[current_player]:
-        ownedRR[current_player] += 1
-    if prop_list[25] in player_prop[current_player]:
-        ownedRR[current_player] += 1
-    if prop_list[35] in player_prop[current_player]:
-        ownedRR[current_player] += 1
+    global ownedU, ownedRR, player_list, current_player, player_prop, prop_list, paid_player
+    ownedU[paid_player] = 0
+    ownedRR[paid_player] = 0
+    if prop_owner[12] == paid_player:
+        ownedU[paid_player] += 1
+    if prop_owner[28] == paid_player:
+        ownedU[paid_player] += 1
+    if prop_owner[5] == paid_player:
+        ownedRR[paid_player] += 1
+    if prop_owner[15] == paid_player:
+        ownedRR[paid_player] += 1
+    if prop_owner[25] == paid_player:
+        ownedRR[paid_player] += 1
+    if prop_owner[35] == paid_player:
+        ownedRR[paid_player] += 1
     
 def MonopolyCheck():
     global player_prop, sortedprop, current_player, monopolyDB, monopolyDP, monopolyG, monopolyLB, monopolyLP, monopolyO, monopolyR, monopolyY, OrangeMon, RedMon, YellowMon, LightBlueMon, LightPurpleMon, GreenMon, DarkPurpleMon, DarkBlueMon
@@ -507,8 +510,7 @@ def MonopolyCheck():
     else:
         YellowMon[current_player] = False
 def DetermineRent():
-    global ChanceMovement, current_player, globalmove, player, player_prop, prop_mort, owned_prop, prop_list, prop_prices, current_prop, current, current_prop, current, rentdue, ownedRR, ownedU, monopolyY, monopolyR, monopolyDB, monopolyDP, monopolyLB, monopolyG, monopolyO, monopolyLP
-    CheckOwned()
+    global ChanceMovement, current_player, move, globalmove, player, player_prop, prop_mort, owned_prop, prop_list, prop_prices, current_prop, current, current_prop, current, rentdue, ownedRR, ownedU, monopolyY, monopolyR, monopolyDB, monopolyDP, monopolyLB, monopolyG, monopolyO, monopolyLP
     if prop_type[current] == 'P':
         if prop_house[current] == 0:
             if prop_list[current] in monopolyDB and monopolyDB[0] in player_prop[paid_player] and monopolyDB[1] in player_prop[paid_player]:
@@ -540,20 +542,22 @@ def DetermineRent():
         elif prop_house[current] == 5:
             rentdue = prop_rentHouse5[current]
     elif prop_type[current] == 'RR':
+        CheckOwned()
         rentdue = 25 * ownedRR[paid_player]
     elif prop_type[current] == 'U':
-        if ChanceMovement == True:
+        CheckOwned()
+        if not ChanceMovement:
+            if ownedU[paid_player] == 1:
+                rentdue = 4 * move
+            elif ownedU[paid_player] == 2:
+                rentdue = 10 * move
+        else:
             rroll1 = random.randint(1, 6)
             rroll2 = random.randint(1, 6)
             rrolls = rroll1 + rroll2
             print(f"You rolled a {rroll1} and a {rroll2}.")
             rentdue = 10 * rrolls
             ChanceMovement = False
-        else:
-            if ownedU[paid_player] == 1:
-                rentdue = 4 * globalmove
-            elif ownedU[paid_player] == 2:
-                rentdue = 10 * globalmove
     Rent()
 def Rent():
     global player_cash, player, rentdue, paid_player, current_player
@@ -1351,7 +1355,7 @@ def DJRoll():
     BankruptCheck()
     endturn()
 def DRoll():
-    global player_positions, tile_list, Double, current_player, player, roll1, roll2, globalmove
+    global player_positions, tile_list, Double, current_player, player, roll1, roll2, globalmove, move
     try:
         roll1 = round(float(input("Roll 1: ")))
         roll2 = round(float(input("Roll 2: ")))
@@ -1495,10 +1499,10 @@ def BuyHouse():
                     player_cash[current_player] -= total_house
                     print(f"You now have ${player_cash[current_player]}.")
                 if sure == "n":
-                    AskRoll()
+                    return
             else:
                 print("Spread too wide.")
-                AskRoll()
+                return
     elif housing == numLB:
         house0 = 6
         house1 = 8
@@ -1534,10 +1538,10 @@ def BuyHouse():
                     player_cash[current_player] -= total_house
                     print(f"You now have ${player_cash[current_player]}.")
                 if sure == "n":
-                    AskRoll()
+                    return
             else:
                 print("Spread too wide.")
-                AskRoll()
+                return
     elif housing == numLP:
         house0 = 11
         house1 = 13
@@ -1573,10 +1577,10 @@ def BuyHouse():
                     player_cash[current_player] -= total_house
                     print(f"You now have ${player_cash[current_player]}.")
                 if sure == "n":
-                    AskRoll()
+                    return
             else:
                 print("Spread too wide.")
-                AskRoll()
+                return
     elif housing == numO:
         house0 = 16
         house1 = 18
@@ -1612,10 +1616,10 @@ def BuyHouse():
                     player_cash[current_player] -= total_house
                     print(f"You now have ${player_cash[current_player]}.")
                 if sure == "n":
-                    AskRoll()
+                    return
             else:
                 print("Spread too wide.")
-                AskRoll()
+                return
     elif housing == numR:
         house0 = 21
         house1 = 23
@@ -1651,10 +1655,10 @@ def BuyHouse():
                     player_cash[current_player] -= total_house
                     print(f"You now have ${player_cash[current_player]}.")
                 if sure == "n":
-                    AskRoll()
+                    return
             else:
                 print("Spread too wide.")
-                AskRoll()
+                return
     elif housing == numY:
         house0 = 26
         house1 = 27
@@ -1690,10 +1694,10 @@ def BuyHouse():
                     player_cash[current_player] -= total_house
                     print(f"You now have ${player_cash[current_player]}.")
                 if sure == "n":
-                    AskRoll()
+                    return
             else:
                 print("Spread too wide.")
-                AskRoll()
+                return
     elif housing == numG:
         house0 = 31
         house1 = 32
@@ -1729,10 +1733,10 @@ def BuyHouse():
                     player_cash[current_player] -= total_house
                     print(f"You now have ${player_cash[current_player]}.")
                 if sure == "n":
-                    AskRoll()
+                    return
             else:
                 print("Spread too wide.")
-                AskRoll()
+                return
     elif housing == numDB:
         house0 = 37
         house1 = 39
@@ -1761,12 +1765,12 @@ def BuyHouse():
                     player_cash[current_player] -= total_house
                     print(f"You now have ${player_cash[current_player]}.")
                 if sure == "n":
-                    AskRoll()
+                    return
             else:
                 print("Spread too wide.")
-                AskRoll()
+                return
     BankruptCheck()
-    AskRoll()
+    return
         
         
     
@@ -1836,7 +1840,7 @@ def SellHouse():
             housefor0 = 0
         else:
             housefor0 = abs(round(float(input(f"Sell How Many Houses on {monopolyDP[0]}?: "))))
-        if prop_house[house1] > 4:
+        if prop_house[house1] == 0:
             print(f"{monopolyDP[1]} has no houses.")
             housefor1 = 0
         else:
@@ -1856,25 +1860,25 @@ def SellHouse():
                     player_cash[current_player] += total_house
                     print(f"You now have ${player_cash[current_player]}.")
                 if sure == "n":
-                    AskRoll()
+                    return
             else:
                 print("Spread too wide.")
-                AskRoll()
+                return
     elif housing == numLB:
         house0 = 6
         house1 = 8
         house2 = 9
-        if prop_house[house0] > 4:
+        if prop_house[house0] == 0:
             print(f"{monopolyLB[0]} has no houses.")
             housefor0 = 0
         else:
             housefor0 = abs(round(float(input(f"How Many Houses on {monopolyLB[0]}?: "))))
-        if prop_house[house1] > 4:
+        if prop_house[house1] == 0:
             print(f"{monopolyLB[1]} has no houses.")
             housefor1 = 0
         else:
             housefor1 = abs(round(float(input(f"How Many Houses on {monopolyLB[1]}?: "))))
-        if prop_house[house2] > 4:
+        if prop_house[house2] == 0:
             print(f"{monopolyLB[2]} has no houses.")
             housefor2 = 0
         else:
@@ -1895,25 +1899,25 @@ def SellHouse():
                     player_cash[current_player] += total_house
                     print(f"You now have ${player_cash[current_player]}.")
                 if sure == "n":
-                    AskRoll()
+                    return
             else:
                 print("Spread too wide.")
-                AskRoll()
+                return
     elif housing == numLP:
         house0 = 11
         house1 = 13
         house2 = 14
-        if prop_house[house0] > 4:
+        if prop_house[house0] == 0:
             print(f"{monopolyLP[0]} has no houses.")
             housefor0 = 0
         else:
             housefor0 = abs(round(float(input(f"How Many Houses on {monopolyLP[0]}?: "))))
-        if prop_house[house1] > 4:
+        if prop_house[house1] == 0:
             print(f"{monopolyLP[1]} has no houses.")
             housefor1 = 0
         else:
             housefor1 = abs(round(float(input(f"How Many Houses on {monopolyLP[1]}?: "))))
-        if prop_house[house2] > 4:
+        if prop_house[house2] == 0:
             print(f"{monopolyLP[2]} has no houses.")
             housefor2 = 0
         else:
@@ -1934,25 +1938,25 @@ def SellHouse():
                     player_cash[current_player] += total_house
                     print(f"You now have ${player_cash[current_player]}.")
                 if sure == "n":
-                    AskRoll()
+                    return
             else:
                 print("Spread too wide.")
-                AskRoll()
+                return
     elif housing == numO:
         house0 = 16
         house1 = 18
         house2 = 19
-        if prop_house[house0] > 4:
+        if prop_house[house0] == 0:
             print(f"{monopolyO[0]} has no houses.")
             housefor0 = 0
         else:
             housefor0 = abs(round(float(input(f"How Many Houses on {monopolyO[0]}?: "))))
-        if prop_house[house1] > 4:
+        if prop_house[house1] == 0:
             print(f"{monopolyO[1]} has no houses.")
             housefor1 = 0
         else:
             housefor1 = abs(round(float(input(f"How Many Houses on {monopolyO[1]}?: "))))
-        if prop_house[house2] > 4:
+        if prop_house[house2] == 0:
             print(f"{monopolyO[2]} has no houses.")
             housefor2 = 0
         else:
@@ -1973,25 +1977,25 @@ def SellHouse():
                     player_cash[current_player] += total_house
                     print(f"You now have ${player_cash[current_player]}.")
                 if sure == "n":
-                    AskRoll()
+                    return
             else:
                 print("Spread too wide.")
-                AskRoll()
+                return
     elif housing == numR:
         house0 = 21
         house1 = 23
         house2 = 24
-        if prop_house[house0] > 4:
+        if prop_house[house0] == 0:
             print(f"{monopolyR[0]} has no houses.")
             housefor0 = 0
         else:
             housefor0 = abs(round(float(input(f"How Many Houses on {monopolyR[0]}?: "))))
-        if prop_house[house1] > 4:
+        if prop_house[house1] == 0:
             print(f"{monopolyR[1]} has no houses.")
             housefor1 = 0
         else:
             housefor1 = abs(round(float(input(f"How Many Houses on {monopolyR[1]}?: "))))
-        if prop_house[house2] > 4:
+        if prop_house[house2] == 0:
             print(f"{monopolyR[2]} has no houses.")
             housefor2 = 0
         else:
@@ -2012,25 +2016,25 @@ def SellHouse():
                     player_cash[current_player] += total_house
                     print(f"You now have ${player_cash[current_player]}.")
                 if sure == "n":
-                    AskRoll()
+                    return
             else:
                 print("Spread too wide.")
-                AskRoll()
+                return
     elif housing == numY:
         house0 = 26
         house1 = 27
         house2 = 29
-        if prop_house[house0] > 4:
+        if prop_house[house0] == 0:
             print(f"{monopolyY[0]} has no houses.")
             housefor0 = 0
         else:
             housefor0 = abs(round(float(input(f"How Many Houses on {monopolyY[0]}?: "))))
-        if prop_house[house1] > 4:
+        if prop_house[house1] == 0:
             print(f"{monopolyY[1]} has no houses.")
             housefor1 = 0
         else:
             housefor1 = abs(round(float(input(f"How Many Houses on {monopolyY[1]}?: "))))
-        if prop_house[house2] > 4:
+        if prop_house[house2] == 0:
             print(f"{monopolyY[2]} has no houses.")
             housefor2 = 0
         else:
@@ -2051,25 +2055,25 @@ def SellHouse():
                     player_cash[current_player] += total_house
                     print(f"You now have ${player_cash[current_player]}.")
                 if sure == "n":
-                    AskRoll()
+                    return
             else:
                 print("Spread too wide.")
-                AskRoll()
+                return
     elif housing == numG:
         house0 = 31
         house1 = 32
         house2 = 34
-        if prop_house[house0] > 4:
+        if prop_house[house0] == 0:
             print(f"{monopolyG[0]} has no houses.")
             housefor0 = 0
         else:
             housefor0 = abs(round(float(input(f"How Many Houses on {monopolyG[0]}?: "))))
-        if prop_house[house1] > 4:
+        if prop_house[house1] == 0:
             print(f"{monopolyG[1]} has no houses.")
             housefor1 = 0
         else:
             housefor1 = abs(round(float(input(f"How Many Houses on {monopolyG[1]}?: "))))
-        if prop_house[house2] > 4:
+        if prop_house[house2] == 0:
             print(f"{monopolyG[2]} has no houses.")
             housefor2 = 0
         else:
@@ -2090,19 +2094,19 @@ def SellHouse():
                     player_cash[current_player] -= total_house
                     print(f"You now have ${player_cash[current_player]}.")
                 if sure == "n":
-                    AskRoll()
+                    return
             else:
                 print("Spread too wide.")
-                AskRoll()
+                return
     elif housing == numDB:
         house0 = 37
         house1 = 39
-        if prop_house[house0] > 4:
+        if prop_house[house0] == 0:
             print(f"{monopolyDB[0]} has no houses.")
             housefor0 = 0
         else:
             housefor0 = abs(round(float(input(f"How Many Houses on {monopolyDB[0]}?: "))))
-        if prop_house[house1] > 4:
+        if prop_house[house1] == 0:
             print(f"{monopolyDB[1]} has no houses.")
             housefor1 = 0
         else:
@@ -2122,11 +2126,11 @@ def SellHouse():
                     player_cash[current_player] += total_house
                     print(f"You now have ${player_cash[current_player]}.")
                 if sure == "n":
-                    AskRoll()
+                    return
             else:
                 print("Spread too wide.")
-                AskRoll()
-    AskRoll()
+                return
+    return
 def Mortgage():
     global prop_list, prop_owner, prop_house, prop_prices, prop_mortprices, prop_mort
     view = -1
@@ -2631,7 +2635,7 @@ def AskRoll():
             print("Invalid Input")
             AskRoll() 
 def JailRoll():
-    global player_positions, tile_list, Double, current_player, player, roll1, roll2, globalmove
+    global player_positions, tile_list, Double, current_player, player, roll1, roll2, globalmove, move
     if jailtime[current_player] == 3:
         print("This is your last turn in jail, if you do not roll doubles you must pay a $50 fee")
         roll1 = random.randint(1, 6)
@@ -2690,7 +2694,7 @@ def LeaveJailRoll():
         BankruptCheck()
         AskRoll()
 def Roll():
-    global player_positions, tile_list, Double, player, current_player, roll1, roll2, globalmove
+    global player_positions, tile_list, Double, player, current_player, roll1, roll2, globalmove, move
     roll1 = random.randint(1, 6)
     roll2 = random.randint(1, 6)
     move = roll1 + roll2
