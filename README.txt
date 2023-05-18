@@ -28,5 +28,8 @@ This is a number guessing game with 4 levels of difficulty.
 Hangman.py
 This is an unreasonable game of hangman using the nltk words corpus as its list of words. Some words include: manzanilla, dol, and pinyl. It also tries to provide a definition for these words.
 
+Monopoly.py
+This is a game of monopoly that took me way longer than I thought it would.
+
 Pass.py
 This is a password generator. Simple as that.
